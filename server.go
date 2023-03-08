@@ -33,6 +33,7 @@ func main() {
 		}
 		log.Printf("loaded %+v jokes", len(lines))
 		rand.Seed(time.Now().Unix())
+		var uniqueMap = make(map[string]time.Time)
 		randomLine := func() (string, error) {
 			lineN := rand.Intn(len(lines))
 			if lineN >= len(lines) {
@@ -60,7 +61,12 @@ func main() {
 				return nil
 			}
 			var msgToClient string
-			if h.Check(fromClient) {
+			t, found := uniqueMap[fromClient] // better to use database to keep date between server reruns
+			if found {
+				log.Printf("this token was already detected in the past %+v : %+v", fromClient, t)
+			}
+			// TODO: add tests and check how this method works
+			if found || h.Check(fromClient) {
 				msgToClient = "the request is not verified by proof of work hashcash"
 			} else {
 				l, errR := randomLine()
