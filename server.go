@@ -1,13 +1,11 @@
 package main
 
 import (
-	"github.com/pkg/errors"
 	"log"
 	"net"
-	"os"
-	"time"
 
 	hc "github.com/catalinc/hashcash"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -18,37 +16,63 @@ const (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	listen, err := net.Listen(TYPE, HOST+":"+PORT)
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-	log.Printf("listening %+v %+v:%+v ...", TYPE, HOST, PORT)
-	// close listener
-	defer listen.Close()
-	for {
-		conn, err := listen.Accept()
+	h := hc.NewStd()
+	handleIncomingRequest := func(conn net.Conn) error {
+		// store incoming data
+		buffer := make([]byte, 1024)
+		_, err := conn.Read(buffer)
 		if err != nil {
-			log.Fatal(err)
-			os.Exit(1)
+			return errors.WithStack(err)
 		}
-		go handleIncomingRequest(conn)
-	}
-}
-func handleIncomingRequest(conn net.Conn) {
-	// store incoming data
-	buffer := make([]byte, 1024)
-	_, err := conn.Read(buffer)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// respond
-	time := time.Now().Format("Monday, 02-Jan-06 15:04:05 MST")
-	conn.Write([]byte("Hi back!\n"))
-	conn.Write([]byte(time))
+		fromClient := string(buffer)
+		log.Printf("received from client: %+v", fromClient)
+		writeToClient := func(msg string) error {
+			if _, errW := conn.Write([]byte(msg)); errW != nil {
+				return errors.WithStack(errW)
+			}
+			return nil
+		}
+		var msgToClient string
+		if h.Check(fromClient) {
+			msgToClient = "the request is not verified by proof of work hashcash"
+		} else {
+			msgToClient = "ok"
+		}
+		if errW := writeToClient(msgToClient); errW != nil {
+			return errors.WithStack(errW)
+		}
 
-	// close conn
-	conn.Close()
+
+		// close conn
+		if errC := conn.Close(); errC != nil {
+			return errors.WithStack(errC)
+		}
+		return nil
+	}
+	if err := func() error {
+		listen, err := net.Listen(TYPE, HOST+":"+PORT)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		log.Printf("listening %+v %+v:%+v ...", TYPE, HOST, PORT)
+		// close listener
+		defer listen.Close()
+		for {
+			conn, errL := listen.Accept()
+			if errL != nil {
+				return errors.WithStack(errL)
+
+			}
+			go func() {
+				if errH := handleIncomingRequest(conn); errH != nil {
+					log.Printf("couldn't process client request: %+v", errH)
+				}
+			}()
+		}
+	}(); err != nil {
+		log.Printf("error: %+v", err)
+	}
+
 }
 
 func main2() {
