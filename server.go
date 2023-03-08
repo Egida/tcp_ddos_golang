@@ -2,7 +2,11 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"net"
+	"os"
+	"strings"
+	"time"
 
 	hc "github.com/catalinc/hashcash"
 	"github.com/pkg/errors"
@@ -12,44 +16,70 @@ const (
 	HOST = "localhost"
 	PORT = "9001"
 	TYPE = "tcp"
+	jokesFile = "jokes.txt"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	h := hc.NewStd()
-	handleIncomingRequest := func(conn net.Conn) error {
-		// store incoming data
-		buffer := make([]byte, 1024)
-		_, err := conn.Read(buffer)
+	if err := func() error {
+		b, err := os.ReadFile(jokesFile)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		fromClient := string(buffer)
-		log.Printf("received from client: %+v", fromClient)
-		writeToClient := func(msg string) error {
-			if _, errW := conn.Write([]byte(msg)); errW != nil {
+		lines := strings.Split(string(b), "\n")
+		if len(lines) <= 1 {
+			return errors.Errorf("to few jokes")
+		}
+		log.Printf("loaded %+v jokes", len(lines))
+		rand.Seed(time.Now().Unix())
+		randomLine := func() (string, error) {
+			lineN := rand.Intn(len(lines))
+			if lineN >= len(lines) {
+				return "", errors.Errorf("not valid line number")
+			}
+			line := lines[lineN]
+			if len(line) == 0 {
+				return line, errors.Errorf("to short line")
+			}
+			return line, nil
+		}
+		handleIncomingRequest := func(conn net.Conn) error {
+			// store incoming data
+			buffer := make([]byte, 1024)
+			_, err := conn.Read(buffer)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			fromClient := string(buffer)
+			log.Printf("received from client: %+v", fromClient)
+			writeToClient := func(msg string) error {
+				if _, errW := conn.Write([]byte(msg)); errW != nil {
+					return errors.WithStack(errW)
+				}
+				return nil
+			}
+			var msgToClient string
+			if h.Check(fromClient) {
+				msgToClient = "the request is not verified by proof of work hashcash"
+			} else {
+				l, errR := randomLine()
+				if errR != nil {
+					return errors.WithStack(errR)
+				}
+				msgToClient = l
+			}
+			if errW := writeToClient(msgToClient); errW != nil {
 				return errors.WithStack(errW)
+			}
+
+
+			// close conn
+			if errC := conn.Close(); errC != nil {
+				return errors.WithStack(errC)
 			}
 			return nil
 		}
-		var msgToClient string
-		if h.Check(fromClient) {
-			msgToClient = "the request is not verified by proof of work hashcash"
-		} else {
-			msgToClient = "ok"
-		}
-		if errW := writeToClient(msgToClient); errW != nil {
-			return errors.WithStack(errW)
-		}
-
-
-		// close conn
-		if errC := conn.Close(); errC != nil {
-			return errors.WithStack(errC)
-		}
-		return nil
-	}
-	if err := func() error {
 		listen, err := net.Listen(TYPE, HOST+":"+PORT)
 		if err != nil {
 			return errors.WithStack(err)
@@ -73,45 +103,4 @@ func main() {
 		log.Printf("error: %+v", err)
 	}
 
-}
-
-func main2() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	if err := func() error {
-		h := hc.NewStd() // or .New(bits, saltLength, extra)
-
-		// Mint a new stamp
-		stamp1, err := h.Mint("something")
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		stamp2, err := h.Mint("something")
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		stamp7, err := h.Mint("something7")
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		log.Printf("stamp1: %+v", stamp1)
-		log.Printf("stamp2: %+v", stamp2)
-		log.Printf("stamp7: %+v", stamp7)
-		// Check a stamp
-		valid := h.Check("1:20:161203:something::+YO19qNZKRs=:a31a2")
-		if valid {
-			log.Println("Valid")
-		} else {
-			log.Println("Invalid")
-		}
-		validNoDate := h.CheckNoDate("1:20:161203:something::+YO19qNZKRs=:a31a2")
-		if validNoDate {
-			log.Println("validNoDate: Valid")
-		} else {
-			log.Println("validNoDate: Invalid")
-		}
-		return nil
-	}(); err != nil {
-		log.Printf("err: %+v", err)
-	}
-	log.Println("finished")
 }
