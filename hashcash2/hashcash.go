@@ -94,8 +94,7 @@ func (h *Hash) checkZeros(stamp string) bool {
 	sumUint64 := binary.BigEndian.Uint64(sum)
 	sumBits := strconv.FormatUint(sumUint64, 2)
 	zeroes := 64 - len(sumBits)
-	log.Printf("uint(zeroes): %+v, h.bits: %+v, len(stamp): %+v, stamp: %+v",
-		uint(zeroes), h.bits, len(stamp), stamp)
+	//log.Printf("uint(zeroes): %+v, h.bits: %+v, len(stamp): %+v, stamp: %+v",		uint(zeroes), h.bits, len(stamp), stamp)
 	return uint(zeroes) >= h.bits
 }
 
