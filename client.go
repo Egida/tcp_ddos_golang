@@ -1,7 +1,7 @@
 package main
 import (
-	hc "github.com/catalinc/hashcash"
 	"github.com/pkg/errors"
+	"github.com/ypapax/tcp_ddos_golang/hashcash2"
 	"log"
 	"net"
 	"os"
@@ -11,7 +11,7 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	if err := func() error {
-		h := hc.NewStd() // or .New(bits, saltLength, extra)
+		h := hashcash2.NewStd() // or .New(bits, saltLength, extra)
 		// Mint a new stamp
 		stamp, err := h.Mint("client_id")
 		if err != nil {

@@ -1,14 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"github.com/ypapax/tcp_ddos_golang/hashcash2"
 	"log"
 	"math/rand"
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
-	hc "github.com/catalinc/hashcash"
 	"github.com/pkg/errors"
 )
 
@@ -21,7 +23,7 @@ const (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	h := hc.NewStd()
+	h := hashcash2.NewStd()
 	if err := func() error {
 		b, err := os.ReadFile(jokesFile)
 		if err != nil {
@@ -33,7 +35,10 @@ func main() {
 		}
 		log.Printf("loaded %+v jokes", len(lines))
 		rand.Seed(time.Now().Unix())
-		var uniqueMap = make(map[string]time.Time)
+		var (
+			uniqueMap = make(map[string]time.Time)
+			uniqueMapMtx = sync.Mutex{}
+		)
 		randomLine := func() (string, error) {
 			lineN := rand.Intn(len(lines))
 			if lineN >= len(lines) {
@@ -52,8 +57,9 @@ func main() {
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			fromClient := string(buffer)
-			log.Printf("received from client: %+v", fromClient)
+			fromClient := strings.TrimSpace(string(bytes.Trim(buffer, "\x00")))
+			log.Printf("received from client: %+v, len(fromClient): %+v",
+				fromClient, len(fromClient))
 			writeToClient := func(msg string) error {
 				if _, errW := conn.Write([]byte(msg)); errW != nil {
 					return errors.WithStack(errW)
@@ -66,7 +72,7 @@ func main() {
 				log.Printf("this token was already detected in the past %+v : %+v", fromClient, t)
 			}
 			// TODO: add tests and check how this method works
-			if found || h.Check(fromClient) {
+			if found || !h.Check(fromClient) {
 				msgToClient = "the request is not verified by proof of work hashcash"
 			} else {
 				l, errR := randomLine()
@@ -75,6 +81,11 @@ func main() {
 				}
 				msgToClient = l
 			}
+			func(){
+				uniqueMapMtx.Lock()
+				defer uniqueMapMtx.Unlock()
+				uniqueMap[fromClient] = time.Now()
+			}()
 			if errW := writeToClient(msgToClient); errW != nil {
 				return errors.WithStack(errW)
 			}
