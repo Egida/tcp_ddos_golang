@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	HOST = "localhost"
+	HOST = "" // localhost
 	PORT = "9001"
 	TYPE = "tcp"
 	jokesFile = "jokes.txt"
@@ -101,7 +101,7 @@ func main() {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		log.Printf("listening %+v %+v:%+v ...", TYPE, HOST, PORT)
+		log.Printf("listening %+v %+v:%+v ....", TYPE, HOST, PORT)
 		// close listener
 		defer listen.Close()
 		for {

@@ -5,13 +5,17 @@ import (
 	"github.com/ypapax/tcp_ddos_golang/hashcash2"
 	"log"
 	"net"
+	"os"
 	"time"
 )
-const PORT_CLIENT = "9001"
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	if err := func() error {
+		servAddr := os.Getenv("SERVER_ADDR")
+		if len(servAddr) == 0 {
+			return errors.Errorf("missing server addr")
+		}
 		h := hashcash2.NewStd() // or .New(bits, saltLength, extra)
 		// Mint a new stamp
 		t1 := time.Now()
@@ -21,7 +25,6 @@ func main() {
 		}
 		log.Printf("time spent on generating the stamp: %+v", time.Since(t1))
 		strEcho := stamp
-		servAddr := "localhost:"+PORT_CLIENT
 		tcpAddr, err := net.ResolveTCPAddr("tcp", servAddr)
 		if err != nil {
 			return errors.WithStack(err)
