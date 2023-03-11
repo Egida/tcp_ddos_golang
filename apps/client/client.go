@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/catalinc/hashcash"
 	"github.com/pkg/errors"
-	"github.com/ypapax/tcp_ddos_golang/hashcash2"
 	"log"
 	"net"
 	"os"
@@ -16,8 +16,8 @@ func main() {
 		if len(servAddr) == 0 {
 			return errors.Errorf("missing server addr")
 		}
-		h := hashcash2.NewStd() // or .New(bits, saltLength, extra)
-		
+		h := hashcash.NewStd() // or .New(bits, saltLength, extra)
+
 		tcpAddr, err := net.ResolveTCPAddr("tcp", servAddr)
 		if err != nil {
 			return errors.WithStack(err)
