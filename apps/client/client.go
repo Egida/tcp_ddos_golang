@@ -17,41 +17,43 @@ func main() {
 			return errors.Errorf("missing server addr")
 		}
 		h := hashcash2.NewStd() // or .New(bits, saltLength, extra)
-		// Mint a new stamp
-		t1 := time.Now()
-		stamp, err := h.Mint("client_id")
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		log.Printf("time spent on generating the stamp: %+v", time.Since(t1))
-		strEcho := stamp
+		
 		tcpAddr, err := net.ResolveTCPAddr("tcp", servAddr)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
-		conn, err := net.DialTCP("tcp", nil, tcpAddr)
-		if err != nil {
-			return errors.WithStack(err)
+		for i:=0;i<=10;i++ {
+			if errF := func() error {
+				conn, errD := net.DialTCP("tcp", nil, tcpAddr)
+				if errD != nil {
+					return errors.WithStack(errD)
+				}
+				defer conn.Close()
+				t1 := time.Now()
+				stamp, err := h.Mint("client_id")
+				if err != nil {
+					return errors.WithStack(err)
+				}
+				log.Printf("time spent on generating the stamp: %+v", time.Since(t1))
+				strEcho := stamp
+				if _, errW := conn.Write([]byte(strEcho)); errW != nil {
+					return errors.WithStack(errW)
+				}
+				log.Println("write to server = ", strEcho)
+				reply := make([]byte, 1024)
+				_, errD = conn.Read(reply)
+				if errD != nil {
+					return errors.WithStack(errD)
+				}
+				log.Println("reply from server=", string(reply))
+				sl := 10 * time.Second
+				log.Printf("sleeping for %+v", sl)
+				time.Sleep(sl)
+				return nil
+			}(); errF != nil {
+				return errors.WithStack(errF)
+			}
 		}
-
-		_, err = conn.Write([]byte(strEcho))
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		log.Println("write to server = ", strEcho)
-
-		reply := make([]byte, 1024)
-
-		_, err = conn.Read(reply)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		log.Println("reply from server=", string(reply))
-
-		conn.Close()
 		return nil
 	}(); err != nil {
 		log.Printf("error: %+v", err)
