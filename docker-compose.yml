@@ -13,6 +13,8 @@ services:
       - server
     environment:
       - SERVER_ADDR=server:9001
+      - HASHCASH_BITS=20
+      - HASHCASH_SALT_LENGTH=10
   server:
     build:
       context: .
@@ -24,3 +26,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    environment:
+      - HASHCASH_BITS=20
+      - HASHCASH_SALT_LENGTH=10

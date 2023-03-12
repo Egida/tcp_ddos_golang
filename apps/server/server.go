@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"github.com/catalinc/hashcash"
+	"github.com/ypapax/tcp_ddos_golang/common"
 	"log"
 	"math/rand"
 	"net"
@@ -23,8 +23,11 @@ const (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	h := hashcash.NewStd()
 	if err := func() error {
+		h, err := common.HashcashObjFromEnv()
+		if err != nil {
+			return errors.WithStack(err)
+		}
 		b, err := os.ReadFile(jokesFile)
 		if err != nil {
 			return errors.WithStack(err)
@@ -53,9 +56,9 @@ func main() {
 		handleIncomingRequest := func(conn net.Conn) error {
 			// store incoming data
 			buffer := make([]byte, 1024)
-			_, err := conn.Read(buffer)
-			if err != nil {
-				return errors.WithStack(err)
+			_, errR := conn.Read(buffer)
+			if errR != nil {
+				return errors.WithStack(errR)
 			}
 			fromClient := strings.TrimSpace(string(bytes.Trim(buffer, "\x00")))
 			log.Printf("received from client: %+v", fromClient)

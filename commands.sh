@@ -1,7 +1,9 @@
 set -ex
-
+export HASHCASH_BITS=20
+export HASHCASH_SALT_LENGTH=10
 server(){
   cd apps/server
+  HASHCASH_BITS=${HASHCASH_BITS}\
   go run server.go
 }
 
@@ -11,12 +13,8 @@ client(){
 }
 
 comp(){
-  stack=tcp_ddos
   docker-compose build
-  set +e; docker stack rm $stack; set -e;
-#  docker stack deploy --force-recreate -c docker-compose.yml $stack
   docker-compose up --force-recreate
-  docker ps
 }
 
 "$@"

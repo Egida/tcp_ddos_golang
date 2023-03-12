@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/catalinc/hashcash"
 	"github.com/pkg/errors"
+	"github.com/ypapax/tcp_ddos_golang/common"
 	"log"
 	"net"
 	"os"
@@ -16,7 +16,10 @@ func main() {
 		if len(servAddr) == 0 {
 			return errors.Errorf("missing server addr")
 		}
-		h := hashcash.NewStd() // or .New(bits, saltLength, extra)
+		h, err := common.HashcashObjFromEnv()
+		if err != nil {
+			return errors.WithStack(err)
+		}
 
 		tcpAddr, err := net.ResolveTCPAddr("tcp", servAddr)
 		if err != nil {
@@ -39,7 +42,7 @@ func main() {
 				if _, errW := conn.Write([]byte(strEcho)); errW != nil {
 					return errors.WithStack(errW)
 				}
-				log.Println("write to server = ", strEcho)
+				//log.Println("write to server = ", strEcho)
 				reply := make([]byte, 1024)
 				_, errD = conn.Read(reply)
 				if errD != nil {
