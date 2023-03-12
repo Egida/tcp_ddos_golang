@@ -33,7 +33,34 @@ server_1  | 2023/03/12 05:04:22 server.go:64: received from client: 1:20:230312:
 client_1  | 2023/03/12 05:04:22 client.go:51: reply from server= I used to be addicted to the hokey pokey<> but I turned myself around.
 client_1  | 2023/03/12 05:04:22 client.go:53: sleeping for 10s
 ```
-
+# Run tests
+```go test -v ./...```
+outputs
+```
+?       github.com/ypapax/tcp_ddos_golang/apps/client   [no test files]
+=== RUN   TestTcpServe
+2023/03/12 19:42:36 common.go:36: bits: 20, saltLength: 8, extra:
+2023/03/12 19:42:36 common.go:36: bits: 20, saltLength: 8, extra:
+2023/03/12 19:42:36 server.go:45: loaded 250 jokes
+2023/03/12 19:42:36 server.go:112: listening tcp :9002 ....
+=== RUN   TestTcpServe/0
+2023/03/12 19:42:37 server.go:70: received from client: 1:20:230312:test::LmiI7Upm:db6f6
+    server_test.go:30: a: What do you call someone with no body and no nose? <>Nobody knows.
+=== RUN   TestTcpServe/1
+2023/03/12 19:42:37 server.go:70: received from client: 1:20:230312:test::LmiI7Upm:db6f6
+2023/03/12 19:42:37 server.go:80: this token was already detected in the past 1:20:230312:test::LmiI7Upm:db6f6 : 2023-03-12 19:42:37.849357 +0600 +06 m=+1.148311542
+    server_test.go:30: a: the request is not verified by proof of work hashcash
+=== RUN   TestTcpServe/2
+2023/03/12 19:42:37 server.go:70: received from client: some random stamp
+    server_test.go:30: a: the request is not verified by proof of work hashcash
+--- PASS: TestTcpServe (1.15s)
+    --- PASS: TestTcpServe/0 (0.01s)
+    --- PASS: TestTcpServe/1 (0.00s)
+    --- PASS: TestTcpServe/2 (0.00s)
+PASS
+ok      github.com/ypapax/tcp_ddos_golang/apps/server   1.632s
+?       github.com/ypapax/tcp_ddos_golang/common    [no test files]
+```
 # Links
 https://en.wikipedia.org/wiki/Proof_of_work
 

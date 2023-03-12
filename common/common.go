@@ -1,12 +1,14 @@
 package common
 
 import (
-	"log"
-	"os"
-	"strconv"
-
+	"bytes"
 	"github.com/catalinc/hashcash"
 	"github.com/pkg/errors"
+	"log"
+	"net"
+	"os"
+	"strconv"
+	"strings"
 )
 
 func GetenvIntDefault(env string, defaultVal int) (int, error) {
@@ -34,4 +36,27 @@ func HashcashObjFromEnv() (*hashcash.Hash, error) {
 	log.Printf("bits: %+v, saltLength: %+v, extra: %+v", bits, saltLength, extra)
 	h := hashcash.New(uint(bits), uint(saltLength), extra)
 	return h, nil
+}
+
+func ReqWisdom(tcpServAddr, hashcashStamp string) (string, error) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", tcpServAddr)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	conn, errD := net.DialTCP("tcp", nil, tcpAddr)
+	if errD != nil {
+		return "", errors.WithStack(errD)
+	}
+	defer conn.Close()
+	strEcho := hashcashStamp
+	if _, errW := conn.Write([]byte(strEcho)); errW != nil {
+		return "", errors.WithStack(errW)
+	}
+	//log.Println("write to server = ", strEcho)
+	reply := make([]byte, 1024)
+	_, errD = conn.Read(reply)
+	if errD != nil {
+		return "", errors.WithStack(errD)
+	}
+	return strings.TrimSpace(string(bytes.Trim(reply, "\x00"))), nil
 }

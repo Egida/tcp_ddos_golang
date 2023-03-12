@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/pkg/errors"
-	"github.com/ypapax/tcp_ddos_golang/common"
 	"log"
-	"net"
 	"os"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/ypapax/tcp_ddos_golang/common"
 )
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -20,35 +21,20 @@ func main() {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-
-		tcpAddr, err := net.ResolveTCPAddr("tcp", servAddr)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		for i:=0;i<=10;i++ {
+		const clientReqsAmount = 10
+		for i := 0; i < clientReqsAmount; i++ {
 			if errF := func() error {
-				conn, errD := net.DialTCP("tcp", nil, tcpAddr)
-				if errD != nil {
-					return errors.WithStack(errD)
-				}
-				defer conn.Close()
 				t1 := time.Now()
-				stamp, err := h.Mint("client_id")
-				if err != nil {
-					return errors.WithStack(err)
+				stamp, errM := h.Mint("client_id") // the server security can be improved by checking clients ids from some database of clients
+				if errM != nil {
+					return errors.WithStack(errM)
 				}
 				log.Printf("time spent on generating the stamp: %+v", time.Since(t1))
-				strEcho := stamp
-				if _, errW := conn.Write([]byte(strEcho)); errW != nil {
-					return errors.WithStack(errW)
+				reply, errR := common.ReqWisdom(servAddr, stamp)
+				if errR != nil {
+					return errors.WithStack(errR)
 				}
-				//log.Println("write to server = ", strEcho)
-				reply := make([]byte, 1024)
-				_, errD = conn.Read(reply)
-				if errD != nil {
-					return errors.WithStack(errD)
-				}
-				log.Println("reply from server=", string(reply))
+				log.Println("reply from server=", reply)
 				sl := 10 * time.Second
 				log.Printf("sleeping for %+v", sl)
 				time.Sleep(sl)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/ypapax/tcp_ddos_golang/common"
 	"log"
 	"math/rand"
@@ -16,110 +17,110 @@ import (
 
 const (
 	HOST = "" // localhost
-	PORT = "9001"
+	PORT = 9001
 	TYPE = "tcp"
 	jokesFile = "jokes.txt"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	if err := func() error {
-		h, err := common.HashcashObjFromEnv()
-		if err != nil {
-			return errors.WithStack(err)
+	if err := tcpServe(PORT); err != nil {
+		log.Printf("error: %+v", err)
+	}
+}
+
+func tcpServe(port int) error {
+	h, err := common.HashcashObjFromEnv()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	b, err := os.ReadFile(jokesFile)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	lines := strings.Split(string(b), "\n")
+	if len(lines) <= 1 {
+		return errors.Errorf("to few jokes")
+	}
+	log.Printf("loaded %+v jokes", len(lines))
+	rand.Seed(time.Now().Unix())
+	var (
+		uniqueMap = make(map[string]time.Time)
+		uniqueMapMtx = sync.Mutex{}
+	)
+	randomLine := func() (string, error) {
+		lineN := rand.Intn(len(lines))
+		if lineN >= len(lines) {
+			return "", errors.Errorf("not valid line number")
 		}
-		b, err := os.ReadFile(jokesFile)
-		if err != nil {
-			return errors.WithStack(err)
+		line := lines[lineN]
+		if len(line) == 0 {
+			return line, errors.Errorf("to short line")
 		}
-		lines := strings.Split(string(b), "\n")
-		if len(lines) <= 1 {
-			return errors.Errorf("to few jokes")
+		return line, nil
+	}
+	handleIncomingRequest := func(conn net.Conn) error {
+		// store incoming data
+		buffer := make([]byte, 1024)
+		_, errR := conn.Read(buffer)
+		if errR != nil {
+			return errors.WithStack(errR)
 		}
-		log.Printf("loaded %+v jokes", len(lines))
-		rand.Seed(time.Now().Unix())
-		var (
-			uniqueMap = make(map[string]time.Time)
-			uniqueMapMtx = sync.Mutex{}
-		)
-		randomLine := func() (string, error) {
-			lineN := rand.Intn(len(lines))
-			if lineN >= len(lines) {
-				return "", errors.Errorf("not valid line number")
-			}
-			line := lines[lineN]
-			if len(line) == 0 {
-				return line, errors.Errorf("to short line")
-			}
-			return line, nil
-		}
-		handleIncomingRequest := func(conn net.Conn) error {
-			// store incoming data
-			buffer := make([]byte, 1024)
-			_, errR := conn.Read(buffer)
-			if errR != nil {
-				return errors.WithStack(errR)
-			}
-			fromClient := strings.TrimSpace(string(bytes.Trim(buffer, "\x00")))
-			log.Printf("received from client: %+v", fromClient)
-			writeToClient := func(msg string) error {
-				if _, errW := conn.Write([]byte(msg)); errW != nil {
-					return errors.WithStack(errW)
-				}
-				return nil
-			}
-			var msgToClient string
-			t, found := uniqueMap[fromClient] // better to use database to keep date between server reruns
-			if found {
-				log.Printf("this token was already detected in the past %+v : %+v", fromClient, t)
-			}
-			// TODO: add tests and check how this method works
-			if found || !h.Check(fromClient) {
-				msgToClient = "the request is not verified by proof of work hashcash"
-			} else {
-				l, errR := randomLine()
-				if errR != nil {
-					return errors.WithStack(errR)
-				}
-				msgToClient = l
-			}
-			func(){
-				uniqueMapMtx.Lock()
-				defer uniqueMapMtx.Unlock()
-				uniqueMap[fromClient] = time.Now()
-			}()
-			if errW := writeToClient(msgToClient); errW != nil {
+		fromClient := strings.TrimSpace(string(bytes.Trim(buffer, "\x00")))
+		log.Printf("received from client: %+v", fromClient)
+		writeToClient := func(msg string) error {
+			if _, errW := conn.Write([]byte(msg)); errW != nil {
 				return errors.WithStack(errW)
-			}
-
-
-			// close conn
-			if errC := conn.Close(); errC != nil {
-				return errors.WithStack(errC)
 			}
 			return nil
 		}
-		listen, err := net.Listen(TYPE, HOST+":"+PORT)
-		if err != nil {
-			return errors.WithStack(err)
+		var msgToClient string
+		t, found := uniqueMap[fromClient] // better to use database to keep date between server reruns
+		if found {
+			log.Printf("this token was already detected in the past %+v : %+v", fromClient, t)
 		}
-		log.Printf("listening %+v %+v:%+v ....", TYPE, HOST, PORT)
-		// close listener
-		defer listen.Close()
-		for {
-			conn, errL := listen.Accept()
-			if errL != nil {
-				return errors.WithStack(errL)
-
+		if found || !h.Check(fromClient) {
+			msgToClient = "the request is not verified by proof of work hashcash"
+		} else {
+			l, errRa := randomLine()
+			if errRa != nil {
+				return errors.WithStack(errRa)
 			}
-			go func() {
-				if errH := handleIncomingRequest(conn); errH != nil {
-					log.Printf("couldn't process client request: %+v", errH)
-				}
-			}()
+			msgToClient = l
 		}
-	}(); err != nil {
-		log.Printf("error: %+v", err)
-	}
+		func(){
+			uniqueMapMtx.Lock()
+			defer uniqueMapMtx.Unlock()
+			uniqueMap[fromClient] = time.Now()
+		}()
+		if errW := writeToClient(msgToClient); errW != nil {
+			return errors.WithStack(errW)
+		}
 
+
+		// close conn
+		if errC := conn.Close(); errC != nil {
+			return errors.WithStack(errC)
+		}
+		return nil
+	}
+	listen, err := net.Listen(TYPE, fmt.Sprintf(HOST+":%+v", port))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	log.Printf("listening %+v %+v:%+v ....", TYPE, HOST, port)
+	// close listener
+	defer listen.Close()
+	for {
+		conn, errL := listen.Accept()
+		if errL != nil {
+			return errors.WithStack(errL)
+
+		}
+		go func() {
+			if errH := handleIncomingRequest(conn); errH != nil {
+				log.Printf("couldn't process client request: %+v", errH)
+			}
+		}()
+	}
 }
