@@ -1,6 +1,6 @@
 # TCP golang server with POW DOS protection
 Hascash was chosen as simplest one among other POW algorithms 
-because here in my opinion any other more complex POW algorithm is not required here.
+because here in my opinion any other more complex POW algorithm is not required.
 
 The client sends hashcash stamp to server. 
 The server checks the stamp and in case it's valid, it 
