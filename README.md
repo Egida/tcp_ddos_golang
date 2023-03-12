@@ -36,5 +36,7 @@ client_1  | 2023/03/12 05:04:22 client.go:53: sleeping for 10s
 
 # Links
 https://en.wikipedia.org/wiki/Proof_of_work
+
 https://github.com/catalinc/hashcash
+
 https://raw.githubusercontent.com/yesinteractive/dadjokes/master/controllers/jokes.txt
