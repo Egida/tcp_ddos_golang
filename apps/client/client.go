@@ -47,5 +47,4 @@ func main() {
 	}(); err != nil {
 		log.Printf("error: %+v", err)
 	}
-
 }

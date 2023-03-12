@@ -2,11 +2,16 @@ package main
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	"github.com/ypapax/tcp_ddos_golang/common"
-	"testing"
 )
 
+// TestTcpServe tests testTcpServe with 3 hashcash stamps:
+// 1. valid - expected a success verification
+// 2. valid duplicate - expected to fail verification because of duplication
+// 3. some random string - expected to fail verification
 func TestTcpServe(t *testing.T) {
 	r := require.New(t)
 	h, err := common.HashcashObjFromEnv()
@@ -14,7 +19,7 @@ func TestTcpServe(t *testing.T) {
 	stamp, err := h.Mint("test")
 	r.NoError(err)
 	type testCase struct {
-		stamp string
+		stamp      string
 		expSuccess bool
 	}
 	cases := []testCase{

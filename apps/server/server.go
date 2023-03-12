@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/ypapax/tcp_ddos_golang/common"
 	"log"
 	"math/rand"
 	"net"
@@ -13,12 +12,13 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/ypapax/tcp_ddos_golang/common"
 )
 
 const (
-	HOST = "" // localhost
-	PORT = 9001
-	TYPE = "tcp"
+	HOST      = "" // localhost
+	PORT      = 9001
+	TYPE      = "tcp"
 	jokesFile = "jokes.txt"
 )
 
@@ -29,6 +29,8 @@ func main() {
 	}
 }
 
+// tcpServe servers tcp server with hashcash POW dos protectin algorithm.
+// It writes a random joke to tcp client in case of successful POW stamp.
 func tcpServe(port int) error {
 	h, err := common.HashcashObjFromEnv()
 	if err != nil {
@@ -45,7 +47,7 @@ func tcpServe(port int) error {
 	log.Printf("loaded %+v jokes", len(lines))
 	rand.Seed(time.Now().Unix())
 	var (
-		uniqueMap = make(map[string]time.Time)
+		uniqueMap    = make(map[string]time.Time)
 		uniqueMapMtx = sync.Mutex{}
 	)
 	randomLine := func() (string, error) {
@@ -88,7 +90,7 @@ func tcpServe(port int) error {
 			}
 			msgToClient = l
 		}
-		func(){
+		func() {
 			uniqueMapMtx.Lock()
 			defer uniqueMapMtx.Unlock()
 			uniqueMap[fromClient] = time.Now()
@@ -96,7 +98,6 @@ func tcpServe(port int) error {
 		if errW := writeToClient(msgToClient); errW != nil {
 			return errors.WithStack(errW)
 		}
-
 
 		// close conn
 		if errC := conn.Close(); errC != nil {

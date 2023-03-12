@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+// GetenvIntDefault parses environment variable to integer.
+// The default value is returned in case evn var is empty.
 func GetenvIntDefault(env string, defaultVal int) (int, error) {
 	e := os.Getenv(env)
 	if len(e) == 0 {
@@ -23,6 +25,8 @@ func GetenvIntDefault(env string, defaultVal int) (int, error) {
 	return i, nil
 }
 
+// HashcashObjFromEnv returns Hash object for generating and validating hashcash stamp,
+// hashcash parameters are read from environment variables.
 func HashcashObjFromEnv() (*hashcash.Hash, error) {
 	bits, err := GetenvIntDefault("HASHCASH_BITS", 20)
 	if err != nil {
@@ -38,6 +42,8 @@ func HashcashObjFromEnv() (*hashcash.Hash, error) {
 	return h, nil
 }
 
+// ReqWisdom connects to tcpServer and sends hashcash stamp for POW verification.
+// In case of success verification it gets a random joke from the server.
 func ReqWisdom(tcpServAddr, hashcashStamp string) (string, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", tcpServAddr)
 	if err != nil {
